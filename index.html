@@ -1,0 +1,2521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#06080f">
+<title>Broom the Moon</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:radial-gradient(1200px 700px at 50% -12%,#131c2e 0%,#06080f 58%,#04050a 100%);color:#e6edf3;font-family:Arial,sans-serif;padding:24px 12px;display:flex;flex-direction:column;align-items:center;min-height:100vh}
+header,.game-container{width:100%;max-width:1000px}
+header{margin-bottom:18px}
+h1{font-size:25px;letter-spacing:-1px}
+.subtitle{color:#8b949e;font-size:13px;margin-top:6px}
+.game-container{background:#0e1421;border:1px solid #232d40;border-radius:12px;padding:14px}
+.top-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.seed-row{display:flex;align-items:center;gap:8px}
+.seed-row label{font-size:10px;letter-spacing:1.5px;color:#8b949e;font-weight:bold}
+.seed-input{background:#070b14;border:1px solid #232d40;color:#e6edf3;border-radius:7px;padding:9px 10px;width:132px;font:13px ui-monospace,SFMono-Regular,Consolas,monospace;outline:none}
+.seed-input:focus{border-color:#7fe3ff}
+.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}
+.stat{background:#070b14;padding:12px;border:1px solid #232d40;border-radius:8px}
+.stat small{display:block;color:#8b949e;font-size:10px;margin-bottom:6px}
+.stat strong{font-size:19px}
+.progress-container{height:7px;background:#232d40;border-radius:10px;overflow:hidden;margin-bottom:13px}
+#progress{width:0%;height:100%;background:linear-gradient(90deg,#7fe3ff,#a9c7ff);transition:width .15s}
+.canvas-wrap{position:relative;overflow:hidden;border-radius:7px}
+canvas{display:block;width:100%;height:auto;border:1px solid #232d40;border-radius:7px;touch-action:none;cursor:crosshair}
+#message{color:#7fe3ff;font-size:13px;margin-top:12px;min-height:18px}
+.section{margin-top:20px}
+.section-title{font-size:13px;font-weight:bold;margin-bottom:10px}
+.broom-list{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.broom{padding:10px 5px;border-radius:7px;background:#070b14;border:1px solid #232d40;cursor:pointer;text-align:center;color:white}
+.broom.active{border-color:#7fe3ff;background:#0f2230}
+.broom .emoji{display:block;font-size:22px;margin-bottom:5px}
+.broom b{display:block;font-size:11px}
+.broom small{display:block;color:#8b949e;font-size:10px;margin-top:4px}
+.controls{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:17px}
+.instructions{color:#8b949e;font-size:12px;line-height:1.8}
+button{background:#1d6fd4;border:1px solid #2b86f5;color:white;padding:10px 16px;border-radius:7px;cursor:pointer;font-weight:bold}
+button:hover{background:#2b86f5}
+.secondary{background:#141b29;border-color:#232d40}
+.secondary:hover{background:#1d2739}
+.shortcut-hint{display:inline-block;margin-left:8px;padding:2px 6px;border:1px solid #ffffff55;border-radius:4px;font-size:10px;color:#d0d7de}
+.leaderboard{background:#070b14;border:1px solid #232d40;border-radius:9px;overflow:hidden}
+.leaderboard-header{padding:14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #232d40}
+.leaderboard-header small{color:#8b949e;font-size:11px}
+.player-entry{display:flex;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #131a28;font-size:13px}
+.player-entry:last-child{border-bottom:none}
+.rank{color:#8b949e;display:inline-block;width:30px}
+.time{color:#7fe3ff;font-weight:bold;font-variant-numeric:tabular-nums}
+.empty{text-align:center;padding:25px;color:#8b949e;font-size:13px}
+.name-input{background:#070b14;border:1px solid #232d40;color:white;padding:10px;border-radius:7px;outline:none;width:100%;max-width:320px}
+.name-input:focus{border-color:#7fe3ff}
+.leaderboard-controls{display:flex;gap:8px;align-items:center}
+.startup-name-field{margin:18px 0}
+.startup-name-field label{display:block;color:#c9d1d9;font-size:12px;font-weight:bold;margin-bottom:8px}
+.startup-name-field input{width:100%;max-width:420px}
+.startup-name-field small{display:block;color:#8b949e;font-size:11px;margin-top:7px}
+@media(max-width:600px){.hud{grid-template-columns:repeat(2,1fr)}.broom-list{grid-template-columns:repeat(2,1fr)}.stat strong{font-size:16px}.game-container{padding:8px}}
+.screen-overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(3,5,10,.96);overflow:auto}
+.screen-panel{width:min(940px,100%);padding:26px;background:#0e1421;border:1px solid #232d40;border-radius:16px;box-shadow:0 24px 90px #0009}
+.screen-kicker{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#7fe3ff}
+.screen-panel h2{font-size:clamp(25px,5vw,38px);margin:8px 0}
+.screen-description{color:#8b949e;font-size:13px;line-height:1.6;margin-bottom:20px}
+.character-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.character-card{min-width:0;padding:10px;background:#070b14;border:1px solid #232d40;border-radius:11px;color:#e6edf3;cursor:pointer;text-align:left;transition:.15s}
+.character-card:hover{border-color:#8b949e;transform:translateY(-2px)}
+.character-card.selected{border-color:#7fe3ff;box-shadow:0 0 0 1px #7fe3ff;background:#0d1a26}
+.character-card img,.character-card canvas,.character-placeholder{display:block;width:100%;height:150px;object-fit:cover;object-position:center;border-radius:7px;background:#111825;margin-bottom:10px}
+.character-placeholder{display:grid;place-items:center;font-size:48px;color:#8b949e;height:150px}
+.character-card strong{display:block;font-size:13px}
+.character-card small{display:block;color:#8b949e;font-size:10px;margin-top:5px}
+.screen-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:20px}
+.screen-actions .spacer{flex:1}
+#makerScreen{display:none}
+#curseOverlay{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:40;
+    overflow:hidden;
+    pointer-events:none;
+    background:transparent;
+}
+#curseOverlay.active{display:block}
+#curseOverlay .curse-word{
+    position:absolute;
+    color:#ff1b1b;
+    font-family:Impact,Arial Black,sans-serif;
+    font-weight:900;
+    font-size:clamp(18px,3vw,42px);
+    letter-spacing:1px;
+    white-space:nowrap;
+    text-shadow:0 0 8px #f00,0 0 22px #900;
+    animation:curseFlash .32s steps(2,end) infinite;
+}
+@keyframes curseFlash{
+    0%,100%{opacity:1}
+    50%{opacity:.08}
+}
+.maker-layout{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:18px;align-items:start}
+#makerCanvas{display:block;width:100%;max-width:540px;aspect-ratio:1;background:#fff;border:1px solid #232d40;border-radius:9px;touch-action:none;cursor:crosshair}
+.maker-tools{display:flex;flex-direction:column;gap:10px}
+.tool-group{padding:12px;background:#070b14;border:1px solid #232d40;border-radius:9px}
+.tool-group label{display:block;color:#8b949e;font-size:11px;margin-bottom:8px}
+.tool-group input[type=color]{width:100%;height:34px;background:transparent;border:0}
+.tool-group input[type=range]{width:100%}
+.tool-group input[type=file]{width:100%;font-size:11px;color:#8b949e}
+.tool-buttons{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.tool-buttons button{padding:8px 5px;font-size:11px}
+@media(max-width:650px){.screen-panel{padding:16px}.character-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.character-card img,.character-card canvas,.character-placeholder{height:125px}.maker-layout{grid-template-columns:1fr}.maker-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+#lunarEnding{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:10000;
+    pointer-events:none;
+}
+#lunarEnding.active{display:block}
+#lunarBlackout{
+    position:absolute;
+    inset:0;
+    background:#000;
+    opacity:1;
+}
+#lunarTypewriter{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#fff;
+    font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+    font-size:clamp(24px,5vw,48px);
+    letter-spacing:2px;
+    text-shadow:0 0 12px #fff8;
+}
+#lunarFlashbang{
+    position:absolute;
+    inset:0;
+    background:#fff;
+    opacity:0;
+}
+#lunarReloadMessage{
+    position:fixed;
+    inset:0;
+    z-index:1000;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    color:#fff;
+    background:rgba(0,0,0,.88);
+    font:700 clamp(22px,4vw,42px) ui-monospace,SFMono-Regular,Consolas,monospace;
+    text-align:center;
+    letter-spacing:1px;
+    text-shadow:0 0 18px #f33;
+    pointer-events:none;
+}
+#lunarReloadMessage.active{display:flex}
+body.lunar-final{
+    overflow:auto;
+    min-height:100vh;
+    background:#050505;
+    padding:24px 12px;
+}
+body.lunar-final header,
+body.lunar-final .top-actions,
+body.lunar-final .hud,
+body.lunar-final .progress-container,
+body.lunar-final #message,
+body.lunar-final .section,
+body.lunar-final .controls{
+    display:none !important;
+}
+body.lunar-final .game-container{
+    width:100%;
+    max-width:1000px;
+    margin:0 auto;
+    padding:0;
+    background:transparent;
+    border:0;
+}
+body.lunar-final .canvas-wrap{
+    width:100%;
+    height:auto;
+    display:block;
+    border:0;
+    border-radius:7px;
+    background:#000;
+}
+body.lunar-final #game{
+    display:block;
+    width:100%;
+    height:auto;
+    max-height:none;
+    border:1px solid #171717;
+    border-radius:7px;
+}
+</style>
+</head>
+<body>
+
+<div id="curseOverlay" aria-hidden="true"></div>
+<div id="lunarEnding" aria-hidden="true">
+    <div id="lunarBlackout"></div>
+    <div id="lunarTypewriter"></div>
+    <div id="lunarFlashbang"></div>
+</div>
+<div id="lunarReloadMessage">You cannot leave the moon.</div>
+
+<div class="screen-overlay" id="characterScreen">
+  <div class="screen-panel">
+    <div class="screen-kicker">Broom the Moon</div>
+    <h2>Choose your astronaut.</h2>
+    <p class="screen-description">Pick a crew member for the surface sweep, or build your own in the Suit Workshop.</p>
+
+    <div class="startup-name-field">
+      <label for="playerName">YOUR NAME</label>
+      <input id="playerName" class="name-input" maxlength="18" placeholder="Enter your name" value="MONDUY" autocomplete="nickname">
+      <small>Your name is saved with every run on the mission leaderboard.</small>
+    </div>
+
+    <div class="character-grid" id="characterGrid"></div>
+    <div class="screen-actions">
+      <button class="secondary" type="button" onclick="openCharacterMaker()">Build a suit</button>
+      <span class="spacer"></span>
+      <button type="button" onclick="startWithSelectedCharacter()">Enter the surface</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen-overlay" id="makerScreen">
+  <div class="screen-panel">
+    <div class="screen-kicker">Suit workshop</div>
+    <h2>Suit Workshop</h2>
+    <p class="screen-description">Upload a portrait or draw your own. Use the brush, eraser, undo, and background controls. Your astronaut is saved in this browser.</p>
+    <div class="maker-layout">
+      <canvas id="makerCanvas" width="512" height="512"></canvas>
+      <div class="maker-tools">
+        <div class="tool-group">
+          <label for="brushColor">Brush color</label><input id="brushColor" type="color" value="#20252d">
+          <label for="brushSize" style="margin-top:10px">Brush size: <span id="brushSizeValue">16</span> px</label><input id="brushSize" type="range" min="1" max="80" value="16">
+        </div>
+        <div class="tool-group"><label>Drawing tools</label><div class="tool-buttons">
+          <button id="brushTool" type="button">Brush</button><button id="eraserTool" class="secondary" type="button">Eraser</button>
+          <button id="undoTool" class="secondary" type="button">Undo</button><button id="clearTool" class="secondary" type="button">Clear</button>
+        </div></div>
+        <div class="tool-group"><label for="characterUpload">Upload PNG, JPG, or WebP</label><input id="characterUpload" type="file" accept="image/png,image/jpeg,image/webp"></div>
+        <div class="tool-group"><label>Canvas background</label><div class="tool-buttons">
+          <button id="whiteBackground" class="secondary" type="button">White</button><button id="transparentBackground" class="secondary" type="button">Transparent</button>
+        </div></div>
+      </div>
+    </div>
+    <div class="screen-actions"><button class="secondary" type="button" onclick="closeCharacterMaker()">Back to crew</button><span class="spacer"></span><button type="button" onclick="saveCustomCharacter()">Save astronaut</button></div>
+    <p class="screen-description" id="makerMessage" style="margin:12px 0 0">Draw something wonderful. It stays on this device.</p>
+  </div>
+</div>
+
+<header>
+    <h1>Broom the Moon</h1>
+    <p class="subtitle">MONDUY's lunar cleaning operation. Every crater, every speck of regolith. Now with competitive speedrunning.</p>
+</header>
+
+<div class="game-container">
+
+    <div class="top-actions">
+        <div class="seed-row">
+            <label for="seedInput">SEED</label>
+            <input id="seedInput" class="seed-input" type="text" inputmode="numeric" maxlength="10" placeholder="random" aria-label="Crater seed">
+            <button class="secondary" type="button" onclick="loadSeed()">Load seed</button>
+        </div>
+        <button type="button" onclick="newRoom()">New crater <span class="shortcut-hint">R</span></button>
+    </div>
+
+    <div class="hud">
+        <div class="stat"><small>DUST BINNED</small><strong id="percent">0%</strong></div>
+        <div class="stat"><small>DUST REMAINING</small><strong id="remaining">0</strong></div>
+        <div class="stat"><small>MISSION TIME</small><strong id="timer">00:00.000</strong></div>
+        <div class="stat"><small>CRATER NO.</small><strong id="roomNumber">1</strong></div>
+    </div>
+
+    <div class="progress-container"><div id="progress"></div></div>
+
+    <div class="canvas-wrap">
+        <canvas id="game" width="900" height="560"></canvas>
+    </div>
+
+    <div id="message">Push the dust into the bin.</div>
+
+    <div class="section">
+        <div class="section-title">BROOM INVENTORY | KEYS 1-0</div>
+        <div class="broom-list" id="broomList"></div>
+    </div>
+
+    <div class="controls">
+        <div class="instructions">
+            WASD / ARROWS: Move<br>
+            MOUSE: Move toward cursor<br>
+            CLICK / DRAG: Set movement destination<br>
+            1-9 / 0: Change broom<br>
+            V: Hopper broom (picks dust up)<br>
+            R: New crater<br>
+            SWEEP: Push dust into the bin in the corner<br>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="leaderboard-header">
+            <div>
+                <div class="section-title" style="margin:0">SPEEDRUN LEADERBOARD</div>
+                <small>FASTEST SURFACE CLEANS</small>
+            </div>
+            <div class="leaderboard-controls">
+                <button class="secondary" onclick="clearLeaderboard()">Reset</button>
+            </div>
+        </div>
+
+        <div class="leaderboard" id="leaderboard">
+            <div class="empty">Loading mission records...</div>
+        </div>
+        <small id="leaderboardStatus" style="display:block;color:#8b949e;font-size:11px;margin-top:8px">Loading locally saved runs...</small>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const W = 900;
+const H = 560;
+
+const CUSTOM_CHARACTER_KEY = "broom_moon_custom_character_v1";
+const SELECTED_CHARACTER_KEY = "broom_moon_selected_character_v1";
+const PLAYER_NAME_KEY = "broom_moon_player_name_v1";
+const ESCAPE_KEY = "broom_moon_escape_v1";
+const STORAGE_KEY = "broom_moon_speedruns_v1";
+
+const CHARACTER_ASSETS = [
+    {name:"Mrs Monduy",file:"MONDUY.jpg"},
+    {name:"Coach Buchannan",file:"Buch.jpg"},
+    {name:"Mr Mast",file:"Mast.jpg"},
+    {name:"Dr Calderwood",file:"Calder.jpg"},
+    {name:"Mrs Ledwith",file:"Ledwith.png"},
+    {name:"Alysia",file:"A.png"},
+    {name:"Roger Finley",file:"Roger.png"},
+    {name:"gabbagul",file:"gabbagul.png"},
+    {name:"Sog",file:"sog.jpeg"},
+    {name:"Lowtiercat",file:"Lowtiercat.png"}
+];
+
+const RAW_ASSET_BASE = "https://raw.githubusercontent.com/PinguinoCoffee/Broom-The-Room/main/";
+
+// Only used if a portrait fails to load, so the token is never a blank square.
+const FALLBACK_LOOKS = [
+    {suit:"#eef3fa",accent:"#3fb950"},
+    {suit:"#e6eef8",accent:"#58a6ff"},
+    {suit:"#f2f5fb",accent:"#bc8cff"},
+    {suit:"#ddd6c8",accent:"#f0883e"},
+    {suit:"#e8f0ff",accent:"#ff69b4"},
+    {suit:"#e9eef6",accent:"#ffd700"},
+    {suit:"#c9d1d9",accent:"#00e5ff"},
+    {suit:"#e4ecf5",accent:"#a5d6a7"},
+    {suit:"#e2e8f0",accent:"#ff5555"}
+];
+
+let selectedCharacter = "Coach Buchannan";
+let customCharacterData = null;
+let characterImage = null;
+let emptyRoom = false;
+
+const playerNameInput = document.getElementById("playerName");
+
+try {
+    playerNameInput.value = localStorage.getItem(PLAYER_NAME_KEY) || "MONDUY";
+} catch(error) {}
+
+playerNameInput.addEventListener("input", () => {
+    const cleanName = playerNameInput.value.replace(/[<>]/g,"").slice(0,18);
+    if(cleanName !== playerNameInput.value) playerNameInput.value = cleanName;
+    try {
+        localStorage.setItem(PLAYER_NAME_KEY,cleanName);
+    } catch(error) {}
+});
+
+function currentCharacter() {
+    if(selectedCharacter === "Custom Character") {
+        return {name:"Custom Character", suit:"#eef3fa", accent:"#7fe3ff", visor:"#0b1220"};
+    }
+    const preset = CHARACTER_ASSETS.find(c=>c.name===selectedCharacter) || CHARACTER_ASSETS[0];
+    const look = FALLBACK_LOOKS[preset.name.length % FALLBACK_LOOKS.length];
+    return {name:preset.name, suit:look.suit, accent:look.accent, visor:"#0b1220"};
+}
+
+function setCharacterImage(src) {
+    if(!src) {
+        characterImage = null;
+        render();
+        return;
+    }
+    const image = new Image();
+    image.onload = () => {characterImage = image;render();};
+    image.onerror = () => {console.error("Could not load character image:",src);};
+    image.src = src;
+    characterImage = image;
+}
+
+function shade(hex, amount) {
+    const value = String(hex).replace("#","");
+    const full = value.length === 3 ? value.split("").map(c=>c+c).join("") : value;
+    const number = parseInt(full,16);
+    const target = amount > 0 ? 255 : 0;
+    const t = Math.abs(amount);
+    const r = Math.round((number >> 16 & 255) + (target - (number >> 16 & 255)) * t);
+    const g = Math.round((number >> 8 & 255) + (target - (number >> 8 & 255)) * t);
+    const b = Math.round((number & 255) + (target - (number & 255)) * t);
+    return "rgb("+r+","+g+","+b+")";
+}
+
+const keys = {};
+const player = {x:70,y:70,radius:18,angle:0,speed:3.1};
+
+const brooms = [
+    {name:"Standard Broom",emoji:"🧹",speed:3.1,range:17,width:1},
+    {name:"Regolith Brush",emoji:"🌾",speed:3.3,range:23,width:1},
+    {name:"Wide Sweeper",emoji:"🧹",speed:2.8,range:31,width:1.2},
+    {name:"Dust Duster",emoji:"🪶",speed:3.8,range:13,width:1},
+    {name:"Lunar Industrial",emoji:"⚙️",speed:2.7,range:27,width:1.8},
+    {name:"Solar Broom",emoji:"✨",speed:3.6,range:25,width:1.3},
+    {name:"Crater Broom",emoji:"🌑",speed:2.5,range:43,width:1.8},
+    {name:"Ion Broom",emoji:"💨",speed:5,range:15,width:1},
+    {name:"Astro-Pro",emoji:"🏆",speed:4,range:35,width:1.5},
+    {name:"THE MOONDUY",emoji:"👑",speed:5.5,range:55,width:2},
+    {name:"Hopper Broom",emoji:"🌀",speed:5.2,range:30,width:1.4,vacuum:true,capacity:30}
+];
+
+let lunaUnlocked = false;
+let secretBuffer = "";
+let lunaMode = false;
+let curseTimer = null;
+let roomsPlayed = 0;
+let endingQueued = false;
+let finalMode = false;
+let endingTimeouts = [];
+let moonMan = null;
+let caught = false;
+let returningFromEnding = false;
+try { returningFromEnding = localStorage.getItem(ESCAPE_KEY) === "1"; } catch(error) {}
+
+let selectedBroom = 0;
+let bin = null;
+let obstacles = [];
+let dust = [];
+let particles = [];
+let sparkles = [];
+let cleaned = 0;
+let totalDust = 0;
+let hopper = 0;
+let roomNumber = 0;
+let won = false;
+let startedAt = 0;
+let finishTime = 0;
+let pointerTarget = null;
+let pointerDown = false;
+
+let rng = Math.random;
+const random = (min,max) => rng() * (max-min) + min;
+
+// SEEDS
+
+let currentSeed = 0;
+let seedDirty = false;
+
+// Seeds with a hand-built layout instead of a random crater.
+const SPECIAL_SEEDS = {
+    0:{kind:"flood",count:2600},
+    67:{kind:"glyph",text:"67"}
+};
+
+function makeRng(seed) {
+    let a = seed >>> 0;
+    return function() {
+        a = (a + 0x6D2B79F5) >>> 0;
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+function normalizeSeed(value) {
+    const raw = String(value).trim();
+    if(raw==="") return null;
+    const number = Number(raw);
+    if(!Number.isFinite(number)) return null;
+    return Math.abs(Math.floor(number)) % 4294967296;
+}
+
+function randomSeed() {
+    return Math.floor(Math.random()*900000000)+100000000;
+}
+
+function applySeed(seed) {
+    currentSeed = seed;
+    rng = makeRng(currentSeed);
+    const box = document.getElementById("seedInput");
+    if(box) box.value = String(currentSeed);
+}
+
+function loadSeed() {
+    const box = document.getElementById("seedInput");
+    const seed = normalizeSeed(box.value);
+    if(seed===null) {
+        document.getElementById("message").textContent = "That seed is not a number. Enter digits, e.g. 12345.";
+        return;
+    }
+    seedDirty = false;
+    newRoom(seed);
+}
+
+function formatTime(ms) {
+    const minutes = Math.floor(ms/60000);
+    const seconds = Math.floor(ms/1000)%60;
+    const milliseconds = Math.floor(ms%1000);
+    return String(minutes).padStart(2,"0")+":"+String(seconds).padStart(2,"0")+"."+String(milliseconds).padStart(3,"0");
+}
+
+function circleRect(x,y,r,o) {
+    const cx = Math.max(o.x,Math.min(x,o.x+o.w));
+    const cy = Math.max(o.y,Math.min(y,o.y+o.h));
+    return Math.hypot(x-cx,y-cy)<r;
+}
+
+function collides(x,y,radius) {
+    return obstacles.some(o=>circleRect(x,y,radius,o));
+}
+
+function roundRectPath(c,x,y,w,h,r) {
+    const radius = Math.min(r,w/2,h/2);
+    c.beginPath();
+    c.moveTo(x+radius,y);
+    c.lineTo(x+w-radius,y);
+    c.arcTo(x+w,y,x+w,y+radius,radius);
+    c.lineTo(x+w,y+h-radius);
+    c.arcTo(x+w,y+h,x+w-radius,y+h,radius);
+    c.lineTo(x+radius,y+h);
+    c.arcTo(x,y+h,x,y+h-radius,radius);
+    c.lineTo(x,y+radius);
+    c.arcTo(x,y,x+radius,y,radius);
+    c.closePath();
+}
+
+// LUNAR SURFACE TEXTURE
+
+const floorCanvas = document.createElement("canvas");
+floorCanvas.width = W;
+floorCanvas.height = H;
+
+function buildSurface() {
+    const f = floorCanvas.getContext("2d");
+    const gradient = f.createLinearGradient(0,0,W,H);
+    gradient.addColorStop(0,"#3f434b");
+    gradient.addColorStop(.45,"#4c5059");
+    gradient.addColorStop(1,"#34383f");
+    f.fillStyle = gradient;
+    f.fillRect(0,0,W,H);
+
+    for(let i=0;i<70;i++) {
+        const x = random(0,W);
+        const y = random(0,H);
+        const r = random(40,150);
+        const patch = f.createRadialGradient(x,y,0,x,y,r);
+        patch.addColorStop(0,Math.random()>.5?"rgba(255,255,255,.05)":"rgba(0,0,0,.07)");
+        patch.addColorStop(1,"rgba(0,0,0,0)");
+        f.fillStyle = patch;
+        f.beginPath();
+        f.arc(x,y,r,0,Math.PI*2);
+        f.fill();
+    }
+
+    for(let i=0;i<28;i++) {
+        const x = random(20,W-20);
+        const y = random(20,H-20);
+        const rx = random(14,52);
+        const ry = rx*random(.6,.95);
+        f.save();
+        f.translate(x,y);
+        f.rotate(random(0,Math.PI));
+        f.fillStyle = "rgba(30,33,39,.45)";
+        f.beginPath();
+        f.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+        f.fill();
+        f.strokeStyle = "rgba(210,220,235,.14)";
+        f.lineWidth = 1.5;
+        f.beginPath();
+        f.ellipse(0,0,rx,ry,0,Math.PI*.15,Math.PI*1.15);
+        f.stroke();
+        f.fillStyle = "rgba(255,255,255,.05)";
+        f.beginPath();
+        f.ellipse(-rx*.2,-ry*.25,rx*.55,ry*.5,0,0,Math.PI*2);
+        f.fill();
+        f.restore();
+    }
+
+    for(let i=0;i<2600;i++) {
+        const x = random(0,W);
+        const y = random(0,H);
+        const s = random(.4,1.6);
+        f.fillStyle = Math.random()>.5?"rgba(226,235,250,.35)":"rgba(22,24,30,.4)";
+        f.beginPath();
+        f.arc(x,y,s,0,Math.PI*2);
+        f.fill();
+    }
+
+    for(let i=0;i<120;i++) {
+        const x = random(0,W);
+        const y = random(0,H);
+        const s = random(1.6,3.4);
+        f.fillStyle = "rgba(198,206,220,.5)";
+        f.beginPath();
+        f.arc(x,y,s,0,Math.PI*2);
+        f.fill();
+    }
+
+    f.fillStyle = "#1b1f26";
+    f.fillRect(0,0,W,12);
+    f.fillRect(0,H-12,W,12);
+    f.fillRect(0,0,12,H);
+    f.fillRect(W-12,0,12,H);
+    f.strokeStyle = "rgba(180,205,255,.18)";
+    f.lineWidth = 1;
+    f.strokeRect(12.5,12.5,W-25,H-25);
+}
+
+// RANDOM CRATER GENERATION
+
+function generateBin() {
+    // The top-left corner is where every run starts, so the bin goes elsewhere.
+    const corners=[
+        {x:W-64,y:64},
+        {x:64,y:H-64},
+        {x:W-64,y:H-64}
+    ];
+    const spot=corners[Math.floor(rng()*corners.length)];
+    bin={x:spot.x,y:spot.y,r:52,pulse:0};
+}
+
+function generateRoom() {
+    obstacles = [];
+
+    // Special seeds are laid out on an empty floor so the pattern reads clearly.
+    if(SPECIAL_SEEDS[currentSeed]) {
+        emptyRoom=false;
+        return;
+    }
+
+    emptyRoom = rng() < 0.000002;
+
+    if(emptyRoom) return;
+
+    const types = ["boulder","crater","lander","crates","dish","rover"];
+    const amount = Math.floor(random(5,10));
+
+    for(let i=0;i<amount;i++) {
+        for(let attempt=0;attempt<100;attempt++) {
+            const w = random(65,150);
+            const h = random(60,120);
+            const x = random(35,W-w-35);
+            const y = random(35,H-h-35);
+            const candidate = {x,y,w,h};
+
+            if(Math.hypot(x+w/2-70,y+h/2-70)<145) continue;
+
+            if(obstacles.some(o=>
+                x<o.x+o.w+18 &&
+                x+w+18>o.x &&
+                y<o.y+o.h+18 &&
+                y+h+18>o.y
+            )) continue;
+
+            if(bin&&Math.hypot(x+w/2-bin.x,y+h/2-bin.y)<bin.r+70) continue;
+
+            const type = types[Math.floor(rng()*types.length)];
+            const object = {...candidate,type,shape:[],crystals:[]};
+
+            if(type==="boulder") {
+                const steps = 12;
+                for(let s=0;s<steps;s++) {
+                    object.shape.push(random(.78,1.08));
+                }
+            }
+
+            if(type==="crates") {
+                object.crystals = [random(0,.6),random(.3,.9)];
+            }
+
+            obstacles.push(object);
+            break;
+        }
+    }
+}
+
+function generateDust() {
+    dust = [];
+
+    const special=SPECIAL_SEEDS[currentSeed];
+    if(special) {
+        if(special.kind==="glyph") generateShapeDust(special.text);
+        else generateFloodDust(special.count);
+        return;
+    }
+
+    // Fewer, fatter clumps: these are pushed by hand, not swept away.
+    const amount = emptyRoom ? 55 : Math.floor(random(55,85));
+
+    for(let i=0;i<amount;i++) {
+        let placed = false;
+
+        for(let attempt=0;attempt<100;attempt++) {
+            const x = random(60,W-60);
+            const y = random(60,H-60);
+
+            if(!collides(x,y,8) && Math.hypot(x-70,y-70)>40 && !nearBin(x,y,bin.r+28)) {
+                dust.push({
+                    x,y,
+                    size:random(2.6,6),
+                    type:rng(),
+                    rotation:random(0,Math.PI*2),
+                    vx:0,
+                    vy:0
+                });
+                placed = true;
+                break;
+            }
+        }
+
+        if(!placed && emptyRoom) {
+            dust.push({
+                x:random(100,W-60),
+                y:random(60,H-60),
+                size:random(2.6,6),
+                type:rng(),
+                rotation:random(0,Math.PI*2),
+                vx:0,
+                vy:0
+            });
+        }
+    }
+
+    totalDust = dust.length;
+}
+
+function nearBin(x,y,pad) {
+    if(!bin) return false;
+    return Math.hypot(x-bin.x,y-bin.y)<(bin.r+pad);
+}
+
+// Seed 0: the floor vanishes under a carpet of dust.
+function generateFloodDust(count) {
+    const step=Math.max(9,Math.sqrt((W-36)*(H-36)/count));
+
+    for(let gy=18;gy<H-18;gy+=step) {
+        for(let gx=18;gx<W-18;gx+=step) {
+            const x=Math.min(W-18,gx+(rng()-.5)*step*.8);
+            const y=Math.min(H-18,gy+(rng()-.5)*step*.8);
+
+            // Leave the bin's whole intake square clear: the bin would otherwise
+            // swallow part of the carpet on spawn, starting the run at 1%.
+            if(bin&&Math.abs(x-bin.x)<bin.r*1.05&&Math.abs(y-bin.y)<bin.r*1.05) continue;
+
+            dust.push({
+                x,y,
+                size:7.5+rng()*4.5,
+                type:.18+rng()*.66,
+                rotation:rng()*Math.PI*2,
+                vx:0,
+                vy:0,
+                wall:18,
+                simple:true
+            });
+        }
+    }
+
+    totalDust=dust.length;
+}
+
+// Lays clumps along the shape of the text, sampled from real glyph pixels.
+function generateShapeDust(text) {
+    const mask=document.createElement("canvas");
+    mask.width=W;
+    mask.height=H;
+    const maskCtx=mask.getContext("2d");
+    maskCtx.fillStyle="#fff";
+    maskCtx.font="900 400px Arial Black, Arial, sans-serif";
+    maskCtx.textAlign="center";
+    maskCtx.textBaseline="middle";
+    maskCtx.fillText(text,W/2,H/2-6);
+
+    const pixels=maskCtx.getImageData(0,0,W,H).data;
+
+    // Jittered grid: even coverage keeps the strokes of the numeral readable,
+    // while the seeded jitter stops it looking mechanically perfect.
+    const step=17;
+    const chosen=[];
+
+    for(let gy=56;gy<H-56;gy+=step) {
+        for(let gx=56;gx<W-56;gx+=step) {
+            const px=Math.min(W-56,Math.floor(gx+rng()*step));
+            const py=Math.min(H-56,Math.floor(gy+rng()*step));
+
+            if(pixels[(py*W+px)*4+3]<=128) continue;
+            if(nearBin(px,py,bin.r+18)) continue;
+
+            chosen.push({x:px,y:py});
+        }
+    }
+
+    chosen.forEach(point=>{
+        dust.push({
+            x:point.x,
+            y:point.y,
+            size:random(3.6,5),
+            type:.7+rng()*.15,
+            rotation:random(0,Math.PI*2),
+            vx:0,
+            vy:0
+        });
+    });
+
+    totalDust=dust.length;
+}
+
+function nearObstacle(d,pad) {
+    return obstacles.some(o=>circleRect(d.x,d.y,pad,o));
+}
+
+// BROOMS
+
+function buildBrooms() {
+    const list = document.getElementById("broomList");
+    list.innerHTML = "";
+
+    brooms.forEach((b,i)=>{
+        const el = document.createElement("div");
+        el.className = "broom";
+        const keyLabel=b.secret?"SECRET":b.vacuum?"V":i===9?"0":String(i+1);
+        const statLine=b.vacuum
+            ?"Speed "+b.speed+" | Cap "+b.capacity
+            :"Speed "+b.speed+" | Range "+b.range;
+        el.innerHTML = `
+            <span class="emoji">${b.emoji}</span>
+            <b>${keyLabel} - ${b.name}</b>
+            <small>${statLine}</small>
+        `;
+        el.addEventListener("click",()=>selectBroom(i));
+        list.appendChild(el);
+    });
+
+    selectBroom(Math.min(selectedBroom,brooms.length-1));
+}
+
+function unlockLunaBroom() {
+    if(lunaUnlocked) return;
+    lunaUnlocked = true;
+    brooms.push({name:"LUNA BROOM",emoji:"🌕",speed:9.5,range:105,width:3,secret:true});
+    buildBrooms();
+    selectBroom(brooms.length-1);
+    document.getElementById("message").textContent = "LUNA BROOM UNLOCKED. THE MOONDUY BROOM HAS BEEN OUTCLASSED.";
+}
+
+function selectBroom(i) {
+    if(!brooms[i] || finalMode || endingQueued) return;
+
+    selectedBroom=i;
+    player.speed=brooms[i].speed;
+    const wasLuna=lunaMode;
+    lunaMode=!!brooms[i].secret;
+
+    if(lunaMode && !wasLuna) {
+        roomsPlayed=1;
+        endingQueued=false;
+    } else if(!lunaMode) {
+        roomsPlayed=0;
+    }
+
+    setCurse(lunaMode);
+
+    document.querySelectorAll(".broom").forEach((el,index)=>{
+        el.classList.toggle("active",index===i);
+    });
+
+    document.getElementById("message").textContent=lunaMode
+        ?"LUNA BROOM equipped. The surface is not yours to finish."
+        :"Equipped: "+brooms[i].name;
+    render();
+}
+
+function setCurse(enabled) {
+    const overlay=document.getElementById("curseOverlay");
+    if(!overlay) return;
+
+    overlay.replaceChildren();
+    overlay.classList.toggle("active",!!enabled);
+
+    if(curseTimer) {
+        clearInterval(curseTimer);
+        curseTimer=null;
+    }
+
+    if(!enabled) return;
+
+    const words=["TURN BACK","IT SEES YOU","LEAVE","NO AIR","DEEPER","DUST"];
+    const spawn=()=>{
+        if(!overlay.classList.contains("active")) return;
+        while(overlay.childElementCount>4) overlay.firstElementChild.remove();
+        const el=document.createElement("span");
+        el.className="curse-word";
+        el.textContent=words[Math.floor(Math.random()*words.length)];
+        el.style.left=random(4,70)+"%";
+        el.style.top=random(8,84)+"%";
+        el.style.transform="rotate("+random(-9,9).toFixed(1)+"deg)";
+        overlay.appendChild(el);
+        setTimeout(()=>el.remove(),1500);
+    };
+
+    spawn();
+    curseTimer=setInterval(spawn,750);
+}
+
+function startEnding() {
+    if(finalMode) return;
+    finalMode=true;
+    endingQueued=true;
+    try { localStorage.setItem(ESCAPE_KEY,"1"); } catch(error) {}
+
+    if(curseTimer) clearInterval(curseTimer);
+    curseTimer=null;
+
+    const ending=document.getElementById("lunarEnding");
+    const blackout=document.getElementById("lunarBlackout");
+    const typewriter=document.getElementById("lunarTypewriter");
+    const flash=document.getElementById("lunarFlashbang");
+
+    ending.classList.add("active");
+    blackout.style.display="block";
+    blackout.style.transition="none";
+    blackout.style.opacity="1";
+    typewriter.style.display="flex";
+    typewriter.textContent="";
+    flash.style.transition="none";
+    flash.style.opacity="0";
+
+    const line="you dug too deep";
+    let position=0;
+    const typeTimer=setInterval(()=>{
+        typewriter.textContent=line.slice(0,++position);
+        if(position>=line.length) clearInterval(typeTimer);
+    },110);
+
+    // Hold on the message, then lift the black screen before the white flash.
+    endingTimeouts.push(setTimeout(()=>{
+        blackout.style.transition="opacity 650ms ease";
+        blackout.style.opacity="0";
+    },2600));
+
+    endingTimeouts.push(setTimeout(()=>{
+        blackout.style.display="none";
+        typewriter.style.display="none";
+        flash.style.transition="none";
+        flash.style.opacity="1";
+    },3250));
+
+    endingTimeouts.push(setTimeout(()=>{
+        flash.style.transition="opacity 1900ms ease-out";
+        flash.style.opacity="0";
+    },4300));
+
+    endingTimeouts.push(setTimeout(()=>{
+        ending.classList.remove("active");
+        ending.style.display="none";
+        document.body.classList.add("lunar-final");
+        // Keep the final scene clean: no curse overlay, HUD, inventory, or crater controls.
+        setCurse(false);
+        startMoonMan();
+    },6300));
+}
+
+// THE THING ON THE SURFACE
+
+function startMoonMan() {
+    if(moonMan) return;
+    const candidates=[
+        {x:W-65,y:H-65},{x:W-65,y:65},{x:65,y:H-65},{x:W/2,y:H-55}
+    ];
+    const spawn=candidates.sort((a,b)=>Math.hypot(b.x-player.x,b.y-player.y)-Math.hypot(a.x-player.x,a.y-player.y))[0];
+    moonMan={x:spawn.x,y:spawn.y,radius:22,speed:Math.max(1.9,player.speed*.88),pulse:0};
+}
+
+function updateMoonMan() {
+    if(!finalMode||!moonMan||caught) return;
+    const dx=player.x-moonMan.x;
+    const dy=player.y-moonMan.y;
+    const distance=Math.hypot(dx,dy)||1;
+    const step=Math.min(moonMan.speed,distance);
+    const nx=moonMan.x+(dx/distance)*step;
+    const ny=moonMan.y+(dy/distance)*step;
+    if(nx>20&&nx<W-20&&!collides(nx,moonMan.y,moonMan.radius)) moonMan.x=nx;
+    if(ny>20&&ny<H-20&&!collides(moonMan.x,ny,moonMan.radius)) moonMan.y=ny;
+    moonMan.pulse+=.12;
+    if(Math.hypot(player.x-moonMan.x,player.y-moonMan.y)<player.radius+moonMan.radius) {
+        caught=true;
+        try { window.close(); } catch(error) {}
+        // Browsers may refuse to close tabs they did not open. Keep the caught state trapped if so.
+        document.body.innerHTML='<div style="position:fixed;inset:0;background:#000;color:#f33;display:grid;place-items:center;font:700 28px monospace;text-align:center">THE SURFACE KEEPS YOU.</div>';
+    }
+}
+
+function drawMoonMan() {
+    if(!finalMode||!moonMan) return;
+    const m=moonMan;
+    const sway=Math.sin(m.pulse*.9)*.08;
+    ctx.save();
+    ctx.translate(m.x,m.y);
+
+    const aura=ctx.createRadialGradient(0,0,6,0,0,74);
+    aura.addColorStop(0,"rgba(0,0,0,.9)");
+    aura.addColorStop(.55,"rgba(0,0,0,.5)");
+    aura.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle=aura;
+    ctx.beginPath();
+    ctx.arc(0,0,74,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle="#050608";
+    ctx.strokeStyle="rgba(190,215,255,.22)";
+    ctx.lineWidth=1.5;
+    ctx.beginPath();
+    ctx.ellipse(0,24,25,36,sway,0,Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(0,-14,21,0,Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowColor="#cfe6ff";
+    ctx.shadowBlur=14+Math.sin(m.pulse)*4;
+    ctx.fillStyle="#eaf4ff";
+    ctx.fillRect(-9,-19,5,8);
+    ctx.fillRect(4,-19,5,8);
+    ctx.restore();
+}
+
+// LUNAR SURFACE
+
+function drawSurface() {
+    ctx.drawImage(floorCanvas,0,0);
+}
+
+// DUST
+
+function drawDust() {
+    dust.forEach(d=>{
+        ctx.save();
+        ctx.translate(d.x,d.y);
+        ctx.rotate(d.rotation);
+
+        if(d.type>.9) {
+            ctx.fillStyle="rgba(170,240,255,.95)";
+            ctx.shadowColor="#7fe3ff";
+            ctx.shadowBlur=10;
+            ctx.beginPath();
+            ctx.moveTo(0,-d.size*1.6);
+            ctx.lineTo(d.size*.9,0);
+            ctx.lineTo(0,d.size*1.6);
+            ctx.lineTo(-d.size*.9,0);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur=0;
+            ctx.strokeStyle="rgba(4,32,44,.6)";
+            ctx.lineWidth=1.2;
+            ctx.stroke();
+        } else if(d.simple) {
+            // Carpet clumps: flat fill only, so 2600 of them still draw cheaply.
+            ctx.fillStyle=d.type>.5?"#f0dcae":"#e3c894";
+            ctx.beginPath();
+            ctx.ellipse(0,0,d.size*1.6,d.size,.5,0,Math.PI*2);
+            ctx.fill();
+        } else {
+            // Warm regolith clumps against a cool grey floor, with a dark rim
+            // and contact shadow so they read clearly while being pushed.
+            const wide=d.type>.62;
+            const rx=wide?d.size*1.7:d.size;
+            const ry=d.size;
+
+            ctx.fillStyle="rgba(10,12,17,.5)";
+            ctx.beginPath();
+            ctx.ellipse(1.6,2,rx*1.02,ry*.95,0,0,Math.PI*2);
+            ctx.fill();
+
+            ctx.fillStyle=wide?"#f5e4bb":d.type>.32?"#ecd7a4":"#dcbf8a";
+            ctx.beginPath();
+            if(wide) ctx.ellipse(0,0,rx,ry,.5,0,Math.PI*2);
+            else ctx.arc(0,0,ry,0,Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle="rgba(58,42,22,.55)";
+            ctx.lineWidth=1.1;
+            ctx.stroke();
+
+            ctx.fillStyle="rgba(255,255,255,.6)";
+            ctx.beginPath();
+            ctx.arc(-rx*.28,-ry*.3,Math.max(1,d.size*.28),0,Math.PI*2);
+            ctx.fill();
+        }
+
+        ctx.restore();
+    });
+}
+
+// DUST BIN
+
+function drawBin() {
+    if(!bin) return;
+
+    bin.pulse+=.04;
+    const glow=.4+Math.sin(bin.pulse)*.14;
+
+    ctx.save();
+
+    const intake=ctx.createRadialGradient(bin.x,bin.y,bin.r*.2,bin.x,bin.y,bin.r*1.5);
+    intake.addColorStop(0,"rgba(127,227,255,"+(glow*.45).toFixed(3)+")");
+    intake.addColorStop(1,"rgba(127,227,255,0)");
+    ctx.fillStyle=intake;
+    ctx.beginPath();
+    ctx.arc(bin.x,bin.y,bin.r*1.5,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.strokeStyle="rgba(180,235,255,"+(glow*.8).toFixed(3)+")";
+    ctx.lineWidth=2;
+    ctx.setLineDash([7,7]);
+    ctx.beginPath();
+    ctx.arc(bin.x,bin.y,bin.r*.8,bin.pulse*.4,bin.pulse*.4+Math.PI*2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.fillStyle="#2a313d";
+    ctx.beginPath();
+    ctx.arc(bin.x,bin.y,bin.r,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle="#5b6678";
+    ctx.lineWidth=4;
+    ctx.stroke();
+
+    const mouth=ctx.createRadialGradient(bin.x,bin.y,4,bin.x,bin.y,bin.r*.72);
+    mouth.addColorStop(0,"#04060a");
+    mouth.addColorStop(.82,"#0f1721");
+    mouth.addColorStop(1,"#1c2735");
+    ctx.fillStyle=mouth;
+    ctx.beginPath();
+    ctx.arc(bin.x,bin.y,bin.r*.7,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.strokeStyle="rgba(190,230,255,.55)";
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.arc(bin.x,bin.y,bin.r*.7,Math.PI*1.05,Math.PI*1.95);
+    ctx.stroke();
+
+    ctx.fillStyle="rgba(190,230,255,.85)";
+    ctx.font="bold 11px Arial";
+    ctx.textAlign="center";
+    ctx.fillText("DUST BIN",bin.x,bin.y>H/2?bin.y-bin.r-10:bin.y+bin.r+18);
+    ctx.restore();
+}
+
+// SURFACE STRUCTURES
+
+function drawObstacles() {
+    obstacles.forEach(o=>{
+        ctx.save();
+        ctx.fillStyle="rgba(0,0,0,.35)";
+        ctx.beginPath();
+        ctx.ellipse(o.x+o.w/2+7,o.y+o.h/2+8,o.w*.52,o.h*.43,0,0,Math.PI*2);
+        ctx.fill();
+
+        if(o.type==="boulder") drawBoulder(o);
+        else if(o.type==="crater") drawCraterObject(o);
+        else if(o.type==="lander") drawLander(o);
+        else if(o.type==="crates") drawCrates(o);
+        else if(o.type==="dish") drawDish(o);
+        else drawRover(o);
+
+        ctx.restore();
+    });
+}
+
+function drawBoulder(o) {
+    const cx=o.x+o.w/2;
+    const cy=o.y+o.h/2;
+    const rx=o.w/2;
+    const ry=o.h/2;
+    const steps=o.shape.length||12;
+
+    ctx.beginPath();
+    for(let i=0;i<=steps;i++) {
+        const angle=(i/steps)*Math.PI*2;
+        const k=o.shape[i%steps]||1;
+        const px=cx+Math.cos(angle)*rx*k;
+        const py=cy+Math.sin(angle)*ry*k;
+        if(i===0) ctx.moveTo(px,py);
+        else ctx.lineTo(px,py);
+    }
+    ctx.closePath();
+    const rock=ctx.createLinearGradient(o.x,o.y,o.x+o.w,o.y+o.h);
+    rock.addColorStop(0,"#8b9099");
+    rock.addColorStop(.55,"#6b7078");
+    rock.addColorStop(1,"#4a4e56");
+    ctx.fillStyle=rock;
+    ctx.fill();
+    ctx.strokeStyle="rgba(18,20,26,.7)";
+    ctx.lineWidth=2;
+    ctx.stroke();
+
+    ctx.fillStyle="rgba(255,255,255,.18)";
+    ctx.beginPath();
+    ctx.ellipse(cx-rx*.25,cy-ry*.3,rx*.42,ry*.3,-.5,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle="rgba(20,22,28,.35)";
+    ctx.beginPath();
+    ctx.ellipse(cx+rx*.3,cy+ry*.25,rx*.22,ry*.18,.4,0,Math.PI*2);
+    ctx.fill();
+}
+
+function drawCraterObject(o) {
+    const cx=o.x+o.w/2;
+    const cy=o.y+o.h/2;
+    const rx=o.w/2;
+    const ry=o.h/2;
+
+    ctx.fillStyle="rgba(120,130,148,.35)";
+    ctx.beginPath();
+    ctx.ellipse(cx,cy,rx*1.06,ry*1.06,0,0,Math.PI*2);
+    ctx.fill();
+
+    const pit=ctx.createRadialGradient(cx-rx*.2,cy-ry*.2,2,cx,cy,Math.max(rx,ry));
+    pit.addColorStop(0,"#15171c");
+    pit.addColorStop(.7,"#22252c");
+    pit.addColorStop(1,"#2f333b");
+    ctx.fillStyle=pit;
+    ctx.beginPath();
+    ctx.ellipse(cx,cy,rx*.92,ry*.9,0,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.strokeStyle="rgba(200,214,235,.22)";
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.ellipse(cx,cy,rx*.92,ry*.9,0,Math.PI*1.05,Math.PI*1.95);
+    ctx.stroke();
+
+    ctx.strokeStyle="rgba(10,12,16,.5)";
+    ctx.beginPath();
+    ctx.ellipse(cx,cy,rx*.7,ry*.66,0,Math.PI*.1,Math.PI*.9);
+    ctx.stroke();
+}
+
+function drawLander(o) {
+    const cx=o.x+o.w/2;
+    const cy=o.y+o.h/2;
+
+    ctx.strokeStyle="#9aa3b2";
+    ctx.lineWidth=4;
+    ctx.lineCap="round";
+    [[-.36,-.34],[.36,-.34],[-.4,.34],[.4,.34]].forEach(([sx,sy])=>{
+        ctx.beginPath();
+        ctx.moveTo(cx+sx*o.w*.32,cy+sy*o.h*.32);
+        ctx.lineTo(cx+sx*o.w*.5,cy+sy*o.h*.52);
+        ctx.stroke();
+    });
+
+    ctx.fillStyle="#c9a75a";
+    roundRectPath(ctx,cx-o.w*.28,cy-o.h*.24,o.w*.56,o.h*.48,5);
+    ctx.fill();
+    ctx.fillStyle="#e3c884";
+    roundRectPath(ctx,cx-o.w*.2,cy-o.h*.16,o.w*.4,o.h*.2,3);
+    ctx.fill();
+
+    ctx.fillStyle="#1d232e";
+    ctx.fillRect(cx-o.w*.14,cy+o.h*.06,o.w*.28,o.h*.1);
+
+    ctx.fillStyle="#8fa0b8";
+    ctx.beginPath();
+    ctx.arc(cx,cy-o.h*.1,o.w*.08,0,Math.PI*2);
+    ctx.fill();
+}
+
+function drawCrates(o) {
+    const box=(x,y,w,h)=>{
+        ctx.fillStyle="#7d848f";
+        roundRectPath(ctx,x,y,w,h,4);
+        ctx.fill();
+        ctx.strokeStyle="rgba(20,23,29,.6)";
+        ctx.lineWidth=1.5;
+        ctx.stroke();
+        ctx.strokeStyle="rgba(230,238,250,.25)";
+        ctx.beginPath();
+        ctx.moveTo(x,y);
+        ctx.lineTo(x+w,y+h);
+        ctx.moveTo(x+w,y);
+        ctx.lineTo(x,y+h);
+        ctx.stroke();
+    };
+
+    box(o.x+6,o.y+8,o.w*.52,o.h*.44);
+    box(o.x+o.w*.46,o.y+o.h*.28,o.w*.48,o.h*.5);
+    box(o.x+o.w*.12,o.y+o.h*.56,o.w*.4,o.h*.4);
+
+    o.crystals.forEach((v,i)=>{
+        ctx.fillStyle="rgba(140,225,255,.75)";
+        ctx.shadowColor="#7fe3ff";
+        ctx.shadowBlur=6;
+        ctx.beginPath();
+        ctx.arc(o.x+o.w*(.3+v*.3),o.y+o.h*(.3+v*.2),2+i,0,Math.PI*2);
+        ctx.fill();
+        ctx.shadowBlur=0;
+    });
+}
+
+function drawDish(o) {
+    const cx=o.x+o.w*.5;
+    const cy=o.y+o.h*.55;
+
+    ctx.strokeStyle="#8d95a3";
+    ctx.lineWidth=5;
+    ctx.beginPath();
+    ctx.moveTo(cx,o.y+o.h*.9);
+    ctx.lineTo(cx,cy);
+    ctx.stroke();
+
+    ctx.fillStyle="#5c626d";
+    ctx.fillRect(cx-14,o.y+o.h*.84,28,10);
+
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.rotate(-.45);
+    ctx.fillStyle="#dfe6f0";
+    ctx.beginPath();
+    ctx.ellipse(0,0,o.w*.34,o.h*.2,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle="#9aa6b8";
+    ctx.beginPath();
+    ctx.ellipse(0,0,o.w*.2,o.h*.11,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle="#f2f7ff";
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(0,0);
+    ctx.lineTo(o.w*.24,-o.h*.16);
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawRover(o) {
+    const bodyY=o.y+o.h*.36;
+    const bodyH=o.h*.34;
+
+    ctx.fillStyle="#242a34";
+    [[.18,.72],[.42,.72],[.66,.72],[.86,.68]].forEach(([fx,fy])=>{
+        ctx.beginPath();
+        ctx.ellipse(o.x+o.w*fx,o.y+o.h*fy,7,9,0,0,Math.PI*2);
+        ctx.fill();
+    });
+
+    ctx.fillStyle="#d7dde7";
+    roundRectPath(ctx,o.x+o.w*.1,bodyY,o.w*.8,bodyH,5);
+    ctx.fill();
+    ctx.fillStyle="#8f98a6";
+    roundRectPath(ctx,o.x+o.w*.16,bodyY+bodyH*.2,o.w*.3,bodyH*.5,3);
+    ctx.fill();
+
+    ctx.fillStyle="#3d6fb8";
+    roundRectPath(ctx,o.x+o.w*.22,o.y+o.h*.16,o.w*.56,o.h*.16,2);
+    ctx.fill();
+    ctx.strokeStyle="rgba(200,225,255,.5)";
+    ctx.lineWidth=1;
+    for(let i=1;i<5;i++){
+        const x=o.x+o.w*.22+(o.w*.56/5)*i;
+        ctx.beginPath();
+        ctx.moveTo(x,o.y+o.h*.16);
+        ctx.lineTo(x,o.y+o.h*.32);
+        ctx.stroke();
+    }
+
+    ctx.strokeStyle="#9aa3b2";
+    ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.moveTo(o.x+o.w*.78,bodyY);
+    ctx.lineTo(o.x+o.w*.82,o.y+o.h*.2);
+    ctx.stroke();
+}
+
+// ASTRONAUT
+
+function drawAstronautTop(character) {
+    const r=player.radius;
+
+    ctx.save();
+
+    ctx.fillStyle="rgba(30,34,42,.9)";
+    roundRectPath(ctx,-r*1.5,-r*.62,r*.78,r*1.24,4);
+    ctx.fill();
+    ctx.strokeStyle="rgba(220,232,250,.28)";
+    ctx.lineWidth=1;
+    ctx.stroke();
+
+    const suit=ctx.createRadialGradient(-r*.35,-r*.35,r*.15,0,0,r*1.05);
+    suit.addColorStop(0,shade(character.suit,.15));
+    suit.addColorStop(1,shade(character.suit,-.35));
+    ctx.fillStyle=suit;
+    ctx.beginPath();
+    ctx.arc(0,0,r,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0,0,r,0,Math.PI*2);
+    ctx.clip();
+    ctx.fillStyle=character.accent;
+    ctx.fillRect(-r*.62,-r,r*.24,r*2);
+    ctx.fillRect(r*.42,-r,r*.2,r*2);
+    ctx.restore();
+
+    ctx.fillStyle="#f4f9ff";
+    ctx.beginPath();
+    ctx.arc(r*.14,0,r*.64,0,Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle="rgba(20,26,36,.35)";
+    ctx.lineWidth=1.2;
+    ctx.stroke();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(r*.14,0,r*.64,0,Math.PI*2);
+    ctx.clip();
+
+    ctx.fillStyle=character.visor;
+    ctx.beginPath();
+    ctx.ellipse(r*.56,0,r*.5,r*.54,0,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.globalAlpha=.4;
+    ctx.fillStyle=character.accent;
+    ctx.beginPath();
+    ctx.ellipse(r*.5,r*.08,r*.42,r*.42,0,0,Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha=1;
+
+    ctx.fillStyle="rgba(255,255,255,.55)";
+    ctx.beginPath();
+    ctx.ellipse(r*.16,-r*.24,r*.16,r*.1,-.6,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.restore();
+}
+
+function drawPlayer() {
+    const broom=brooms[selectedBroom];
+    const character=currentCharacter();
+    const isLuna=!!broom.secret;
+    ctx.save();
+    ctx.translate(player.x,player.y);
+    ctx.rotate(player.angle);
+
+    ctx.strokeStyle=isLuna?"#7fe3ff":selectedBroom===9?"#ff8a8a":"#8d95a3";
+    ctx.lineWidth=isLuna?14:selectedBroom>=6?7:5;
+    ctx.lineCap="round";
+    ctx.beginPath();
+    ctx.moveTo(5,0);
+    ctx.lineTo(42,0);
+    ctx.stroke();
+
+    const size=isLuna?109:9+broom.width*5;
+    ctx.fillStyle=isLuna?"#7fe3ff":selectedBroom===9?"#ff8a8a":selectedBroom===5?"#ffd700":"#cdd4df";
+    ctx.beginPath();
+    ctx.moveTo(37,-size);
+    ctx.lineTo(53,-size*.8);
+    ctx.lineTo(53,size*.8);
+    ctx.lineTo(37,size);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle=isLuna?"rgba(10,40,55,.8)":"#6d747f";
+    ctx.lineWidth=1;
+    for(let i=-size;i<=size;i+=4) {
+        ctx.beginPath();
+        ctx.moveTo(40,i);
+        ctx.lineTo(52,i);
+        ctx.stroke();
+    }
+
+    ctx.fillStyle="rgba(0,0,0,.3)";
+    ctx.beginPath();
+    ctx.arc(2,4,20,0,Math.PI*2);
+    ctx.fill();
+
+    if(characterImage&&characterImage.complete&&characterImage.naturalWidth>0) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0,0,player.radius,0,Math.PI*2);
+        ctx.clip();
+        ctx.drawImage(characterImage,-player.radius,-player.radius,player.radius*2,player.radius*2);
+        ctx.restore();
+    } else {
+        drawAstronautTop(character);
+    }
+
+    ctx.strokeStyle=isLuna?"#7fe3ff":"#ffffff";
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.arc(0,0,player.radius,0,Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+}
+
+// HOPPER METER (drawn unrotated, next to the character)
+
+function drawHopperMeter() {
+    const broom=brooms[selectedBroom];
+    if(!broom) return;
+    if(!broom.vacuum&&hopper<=0) return;
+
+    const capacity=broom.capacity||30;
+    const ratio=Math.max(0,Math.min(1,hopper/capacity));
+    const w=7;
+    const h=46;
+    const x=Math.min(W-18,player.x+24);
+    const y=player.y-h/2;
+    const full=ratio>=1;
+
+    ctx.save();
+
+    ctx.fillStyle="rgba(4,8,14,.78)";
+    roundRectPath(ctx,x-2.5,y-2.5,w+5,h+5,5);
+    ctx.fill();
+    ctx.strokeStyle="rgba(190,225,255,.4)";
+    ctx.lineWidth=1;
+    ctx.stroke();
+
+    const fillHeight=h*ratio;
+    if(fillHeight>1) {
+        ctx.fillStyle=full?"#ff5555":ratio>.75?"#ffb547":"#7fe3ff";
+        if(full) {
+            ctx.shadowColor="#ff5555";
+            ctx.shadowBlur=9;
+        }
+        roundRectPath(ctx,x,y+h-fillHeight,w,fillHeight,3);
+        ctx.fill();
+        ctx.shadowBlur=0;
+    }
+
+    ctx.fillStyle="rgba(190,225,255,.3)";
+    for(let i=1;i<3;i++) ctx.fillRect(x,y+h*(i/3),w,1);
+
+    ctx.fillStyle=full?"#ff8a8a":"rgba(205,232,255,.9)";
+    ctx.font="bold 9px Arial";
+    ctx.textAlign="center";
+    ctx.fillText(hopper+"/"+capacity,x+w/2,y-8);
+
+    ctx.restore();
+}
+
+// PARTICLES
+
+function addParticles(x,y) {
+    for(let i=0;i<3;i++) {
+        particles.push({
+            x,y,
+            vx:random(-1.5,1.5),
+            vy:random(-1.5,1.5),
+            life:20,
+            size:random(1,3)
+        });
+    }
+}
+
+function drawParticles() {
+    particles.forEach(p=>{
+        ctx.globalAlpha=p.life/20;
+        ctx.fillStyle="#e3eaf6";
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+        ctx.fill();
+        p.x+=p.vx;
+        p.y+=p.vy;
+        p.life--;
+    });
+
+    ctx.globalAlpha=1;
+    particles=particles.filter(p=>p.life>0);
+}
+
+// STAR BURST
+
+function launchSparkles() {
+    sparkles=[];
+    const colors=["#7fe3ff","#a9c7ff","#ffffff","#ffd700","#ff8fc7","#b4ffcf"];
+
+    for(let i=0;i<180;i++) {
+        sparkles.push({
+            x:random(0,W),
+            y:random(-H,0),
+            vx:random(-2.4,2.4),
+            vy:random(1.8,6),
+            rotation:random(0,6),
+            spin:random(-.12,.12),
+            size:random(3,7),
+            color:colors[Math.floor(Math.random()*colors.length)],
+            life:random(180,350)
+        });
+    }
+}
+
+function drawSparkles() {
+    sparkles.forEach(s=>{
+        ctx.save();
+        ctx.translate(s.x,s.y);
+        ctx.rotate(s.rotation);
+        ctx.fillStyle=s.color;
+        ctx.beginPath();
+        for(let i=0;i<4;i++) {
+            const angle=(Math.PI/2)*i;
+            const long=i%2===0?s.size:s.size*.38;
+            ctx.lineTo(Math.cos(angle)*long,Math.sin(angle)*long);
+            ctx.lineTo(Math.cos(angle+Math.PI/4)*s.size*.3,Math.sin(angle+Math.PI/4)*s.size*.3);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+        s.x+=s.vx;
+        s.y+=s.vy;
+        s.vy+=.03;
+        s.rotation+=s.spin;
+        s.life--;
+    });
+
+    sparkles=sparkles.filter(s=>s.life>0&&s.y<H+30);
+}
+
+// LEADERBOARD
+
+function getLeaderboard() {
+    try {
+        const saved=JSON.parse(localStorage.getItem(STORAGE_KEY));
+        return Array.isArray(saved)?saved:[];
+    } catch {
+        return [];
+    }
+}
+
+function saveLeaderboard(entries) {
+    try {
+        localStorage.setItem(STORAGE_KEY,JSON.stringify(entries));
+    } catch {
+        document.getElementById("message").textContent="Could not save the leaderboard. Browser storage may be disabled.";
+    }
+}
+
+function recordScore(ms) {
+    const name=document.getElementById("playerName").value.trim().replace(/[<>]/g,"").slice(0,18)||"MONDUY";
+    const entries=getLeaderboard();
+
+    entries.push({
+        name,
+        time:ms,
+        date:new Date().toISOString()
+    });
+
+    entries.sort((a,b)=>a.time-b.time);
+    saveLeaderboard(entries.slice(0,10));
+    renderLeaderboard();
+}
+
+function renderLeaderboard(entriesOverride) {
+    const entries=Array.isArray(entriesOverride)?entriesOverride:getLeaderboard();
+    const board=document.getElementById("leaderboard");
+
+    if(!entries.length) {
+        board.innerHTML='<div class="empty">No speedruns recorded yet. Be the first!</div>';
+        return;
+    }
+
+    board.innerHTML="";
+
+    entries.slice(0,10).forEach((entry,i)=>{
+        const row=document.createElement("div");
+        row.className="player-entry";
+
+        const left=document.createElement("span");
+        const rank=document.createElement("span");
+        rank.className="rank";
+        rank.textContent="#"+(i+1);
+
+        const name=document.createElement("span");
+        name.textContent=entry.name;
+        left.append(rank,name);
+
+        const time=document.createElement("span");
+        time.className="time";
+        time.textContent=formatTime(entry.time);
+
+        row.append(left,time);
+        board.appendChild(row);
+    });
+}
+
+function clearLeaderboard() {
+    if(!confirm("Delete all locally saved mission records?")) return;
+    try {
+        localStorage.removeItem(STORAGE_KEY);
+    } catch {}
+    renderLeaderboard();
+}
+
+// VICTORY
+
+function winGame() {
+    if(won) return;
+
+    won=true;
+    finishTime=Date.now()-startedAt;
+
+    document.getElementById("timer").textContent=formatTime(finishTime);
+
+    document.getElementById("message").textContent=
+        "CRATER CLEARED! "+currentCharacter().name.toUpperCase()+
+        " HAS BINNED THE DUST. TIME: "+formatTime(finishTime);
+
+    document.getElementById("message").style.color="#7fe3ff";
+
+    recordScore(finishTime);
+    launchSparkles();
+}
+
+// HUD
+
+function updateHUD() {
+    const percentage=lunaMode
+        ?Math.min(99,Math.round(cleaned/Math.max(totalDust,1)*100))
+        :(totalDust?Math.round(cleaned/totalDust*100):100);
+    document.getElementById("percent").textContent=lunaMode?"∞":percentage+"%";
+    document.getElementById("remaining").textContent=dust.length;
+    document.getElementById("progress").style.width=percentage+"%";
+}
+
+// TIMER
+
+function updateTimer() {
+    if(won||!startedAt) return;
+    document.getElementById("timer").textContent=formatTime(Date.now()-startedAt);
+}
+
+// CURSOR CONTROLS
+
+function canvasPosition(e) {
+    const rect=canvas.getBoundingClientRect();
+    return {
+        x:(e.clientX-rect.left)*W/rect.width,
+        y:(e.clientY-rect.top)*H/rect.height
+    };
+}
+
+canvas.addEventListener("pointermove",e=>{
+    if(e.pointerType==="mouse"&&e.buttons===0) {
+        pointerTarget=canvasPosition(e);
+    } else if(pointerDown) {
+        pointerTarget=canvasPosition(e);
+    }
+});
+
+canvas.addEventListener("pointerdown",e=>{
+    pointerDown=true;
+    pointerTarget=canvasPosition(e);
+    canvas.setPointerCapture(e.pointerId);
+});
+
+canvas.addEventListener("pointerup",()=>pointerDown=false);
+canvas.addEventListener("pointercancel",()=>{
+    pointerDown=false;
+    pointerTarget=null;
+});
+
+canvas.addEventListener("pointerleave",e=>{
+    if(e.pointerType==="mouse"&&!pointerDown) pointerTarget=null;
+});
+
+// MOVEMENT
+
+function update() {
+    if(finalMode) updateMoonMan();
+    updateDustPhysics();
+    if(!won) {
+        if(bin&&hopper>0&&Math.abs(player.x-bin.x)<bin.r*.9&&Math.abs(player.y-bin.y)<bin.r*.9) {
+            depositHopper();
+        }
+
+        let dx=0;
+        let dy=0;
+
+        if(keys.w||keys.arrowup) dy--;
+        if(keys.s||keys.arrowdown) dy++;
+        if(keys.a||keys.arrowleft) dx--;
+        if(keys.d||keys.arrowright) dx++;
+
+        if(!dx&&!dy&&pointerTarget) {
+            const tx=pointerTarget.x-player.x;
+            const ty=pointerTarget.y-player.y;
+            const distance=Math.hypot(tx,ty);
+
+            if(distance>10) {
+                dx=tx/distance;
+                dy=ty/distance;
+            } else {
+                pointerTarget=null;
+            }
+        }
+
+        if(dx||dy) {
+            const length=Math.hypot(dx,dy);
+            dx/=length;
+            dy/=length;
+            player.angle=Math.atan2(dy,dx);
+
+            const oldX=player.x;
+            const oldY=player.y;
+            const nextX=player.x+dx*player.speed;
+            const nextY=player.y+dy*player.speed;
+
+            if(nextX>28&&nextX<W-28&&!collides(nextX,player.y,player.radius)) {
+                player.x=nextX;
+            }
+
+            if(nextY>28&&nextY<H-28&&!collides(player.x,nextY,player.radius)) {
+                player.y=nextY;
+            }
+
+            if(!startedAt&&(player.x!==oldX||player.y!==oldY)) {
+                startedAt=Date.now();
+            }
+
+            if(brooms[selectedBroom].vacuum) {
+                vacuumDust();
+            } else {
+                pushDust();
+            }
+        }
+    }
+}
+
+function spawnEndlessDust(amount) {
+    for(let i=0;i<amount;i++) {
+        for(let attempt=0;attempt<80;attempt++) {
+            const x=random(60,W-60);
+            const y=random(60,H-60);
+
+            if(!collides(x,y,7)&&!nearBin(x,y,30)) {
+                dust.push({
+                    x,y,
+                    size:random(2.6,6),
+                    type:rng(),
+                    rotation:random(0,Math.PI*2),
+                    vx:0,
+                    vy:0
+                });
+                break;
+            }
+        }
+    }
+}
+
+// The broom no longer erases dust: it shoves it across the floor.
+// The push zone is a cone in front of the bristles, so clumps that slide ahead
+// keep getting shoved instead of instantly leaving a small circle.
+function pushDust() {
+    const broom=brooms[selectedBroom];
+    const cos=Math.cos(player.angle);
+    const sin=Math.sin(player.angle);
+    const headDist=47;
+    const length=headDist+broom.range*1.7;
+    const halfWidth=Math.max(16,broom.range*.95);
+    const force=.3+broom.width*.24;
+    let touched=0;
+
+    dust.forEach(d=>{
+        const rx=d.x-player.x;
+        const ry=d.y-player.y;
+        const forward=rx*cos+ry*sin;
+        const lateral=-rx*sin+ry*cos;
+
+        if(forward<14||forward>length) return;
+        if(Math.abs(lateral)>halfWidth+d.size) return;
+
+        const forwardFalloff=forward<=headDist?1:1-(forward-headDist)/(length-headDist);
+        const lateralFalloff=1-Math.abs(lateral)/(halfWidth+1);
+        const strength=force*Math.max(.15,forwardFalloff)*Math.max(.25,lateralFalloff);
+
+        // Mostly straight ahead, with a little outward fan.
+        d.vx+=cos*strength*1.6-sin*(lateral/(halfWidth+1))*strength*.5;
+        d.vy+=sin*strength*1.6+cos*(lateral/(halfWidth+1))*strength*.5;
+
+        const speed=Math.hypot(d.vx,d.vy);
+        if(speed>9) {
+            d.vx*=9/speed;
+            d.vy*=9/speed;
+        }
+
+        touched++;
+    });
+
+    if(touched>0&&Math.random()<.2) addParticles(player.x+cos*47,player.y+sin*47);
+}
+
+// HOPPER BROOM: ingests dust instead of pushing it, up to a capacity.
+function vacuumDust() {
+    const broom=brooms[selectedBroom];
+    const capacity=broom.capacity||0;
+
+    if(hopper>=capacity) {
+        document.getElementById("message").textContent=
+            "HOPPER FULL. Walk over the dust bin to empty it.";
+        return;
+    }
+
+    const bx=player.x+Math.cos(player.angle)*47;
+    const by=player.y+Math.sin(player.angle)*47;
+    const reach=broom.range;
+    let collected=0;
+
+    for(let i=dust.length-1;i>=0&&hopper+collected<capacity;i--) {
+        const d=dust[i];
+        if(Math.hypot(d.x-bx,d.y-by)>reach+d.size) continue;
+        addParticles(d.x,d.y);
+        dust.splice(i,1);
+        collected++;
+    }
+
+    if(collected>0) {
+        hopper+=collected;
+        document.getElementById("message").textContent=hopper>=capacity
+            ?"Hopper "+hopper+"/"+capacity+". Full - empty it at the dust bin."
+            :"Hopper "+hopper+"/"+capacity+".";
+        updateHUD();
+        checkWin();
+    }
+}
+
+function depositHopper() {
+    if(hopper<=0) return;
+
+    const amount=hopper;
+    hopper=0;
+    cleaned+=amount;
+    addBinParticles(amount);
+    updateHUD();
+
+    document.getElementById("message").textContent=
+        "HOPPER EMPTIED. +"+amount+" DUST BINNED.";
+
+    checkWin();
+}
+
+function checkWin() {
+    if(won) return;
+    if(dust.length===0&&hopper===0) winGame();
+}
+
+function addBinParticles(count) {
+    const amount=Math.min(14,Math.max(3,count*2));
+    for(let i=0;i<amount;i++) {
+        particles.push({
+            x:bin.x+random(-12,12),
+            y:bin.y+random(-12,12),
+            vx:random(-1.4,1.4),
+            vy:random(-1.4,1.4),
+            life:26,
+            size:random(1.5,3.4)
+        });
+    }
+}
+
+function updateDustPhysics() {
+    if(!bin) return;
+    let binned=0;
+
+    for(let i=dust.length-1;i>=0;i--) {
+        const d=dust[i];
+
+        d.x+=d.vx;
+        d.y+=d.vy;
+        d.vx*=.9;
+        d.vy*=.9;
+        if(Math.abs(d.vx)<.02) d.vx=0;
+        if(Math.abs(d.vy)<.02) d.vy=0;
+        d.rotation+=Math.hypot(d.vx,d.vy)*.02;
+
+        // Stop dust well short of the walls: a clump flattened into the very corner
+        // cannot be reached from behind, which used to softlock a crater. Keeping it
+        // 56px in leaves room for the player to step between it and the border.
+        // Carpet clumps opt into a smaller margin so the cover reaches the edges.
+        const wall=d.wall||56;
+        if(d.x<wall) {d.x=wall;d.vx=Math.abs(d.vx)*.3;}
+        if(d.x>W-wall) {d.x=W-wall;d.vx=-Math.abs(d.vx)*.3;}
+        if(d.y<wall) {d.y=wall;d.vy=Math.abs(d.vy)*.3;}
+        if(d.y>H-wall) {d.y=H-wall;d.vy=-Math.abs(d.vy)*.3;}
+
+        if(collides(d.x,d.y,d.size)) {
+            d.x-=d.vx*.6;
+            d.y-=d.vy*.6;
+            d.vx*=-.2;
+            d.vy*=-.2;
+
+            // Never let a clump get sealed inside furniture.
+            for(let nudge=0;nudge<12&&collides(d.x,d.y,d.size);nudge++) {
+                d.x=Math.max(22,Math.min(W-22,d.x+random(-4,4)));
+                d.y=Math.max(22,Math.min(H-22,d.y+random(-4,4)));
+            }
+        }
+
+        // Square mouth: a round test would leave dust stuck in the very corner, outside the bin.
+        const speedNow=Math.hypot(d.vx,d.vy);
+        d.still=speedNow>.06?0:(d.still||0)+1;
+
+        // Rescue for a clump wedged in a nook the broom cannot reach into.
+        if(d.still>300&&nearObstacle(d,34)) {
+            const escape=Math.atan2(bin.y-d.y,bin.x-d.x);
+            d.vx+=Math.cos(escape)*.4;
+            d.vy+=Math.sin(escape)*.4;
+        }
+
+        if(Math.abs(d.x-bin.x)<bin.r*1.02&&Math.abs(d.y-bin.y)<bin.r*1.02) {
+            dust.splice(i,1);
+            binned++;
+        }
+    }
+
+    if(binned>0) {
+        cleaned+=binned;
+        addBinParticles(binned);
+
+        if(lunaMode) {
+            spawnEndlessDust(binned);
+            document.getElementById("message").textContent=
+                "THE REGOLITH REFILLS. "+dust.length+" SPECKS REMAIN. IT NEVER ENDS.";
+        } else {
+            checkWin();
+        }
+
+        updateHUD();
+    }
+}
+
+// NEW CRATER
+
+function newRoom(seedOverride) {
+    let seed;
+    if(typeof seedOverride==="number") {
+        seed=seedOverride;
+    } else if(seedDirty) {
+        const typed=normalizeSeed(document.getElementById("seedInput").value);
+        seed=typed===null?randomSeed():typed;
+    } else {
+        seed=randomSeed();
+    }
+    seedDirty=false;
+    applySeed(seed);
+
+    roomNumber++;
+    cleaned=0;
+    hopper=0;
+    won=false;
+    startedAt=0;
+    finishTime=0;
+
+    player.x=70;
+    player.y=70;
+    player.angle=0;
+
+    pointerTarget=null;
+    pointerDown=false;
+    particles=[];
+    sparkles=[];
+
+    generateBin();
+    generateRoom();
+    generateDust();
+    if(lunaMode) spawnEndlessDust(300);
+
+    if(lunaMode && !endingQueued && !finalMode) {
+        roomsPlayed++;
+        if(roomsPlayed>=3) {
+            endingQueued=true;
+            setTimeout(startEnding,1200);
+        }
+    }
+
+    document.getElementById("roomNumber").textContent=roomNumber;
+    document.getElementById("timer").textContent="00:00.000";
+
+    document.getElementById("message").textContent=lunaMode
+        ?"CRATER "+roomNumber+" HAS BEEN REPLACED. IT NEVER ENDS."
+        :emptyRoom
+            ?"✨ RARE OPEN PLAIN! A short push to the bin."
+            :currentCharacter().name+" is ready. Push the dust into the bin.";
+
+    document.getElementById("message").style.color=lunaMode?"#ff3b3b":emptyRoom?"#ffd700":"#7fe3ff";
+
+    updateHUD();
+    render();
+}
+
+// RENDER
+
+function render() {
+    ctx.clearRect(0,0,W,H);
+    drawSurface();
+    drawBin();
+    drawDust();
+    drawObstacles();
+    drawParticles();
+    drawPlayer();
+    drawHopperMeter();
+    drawSparkles();
+    if(finalMode) {
+        ctx.save();
+        ctx.fillStyle="rgba(0,0,0,.6)";
+        ctx.fillRect(0,0,W,H);
+        ctx.restore();
+    }
+    drawMoonMan();
+}
+
+function gameLoop() {
+    update();
+    render();
+    updateTimer();
+    requestAnimationFrame(gameLoop);
+}
+
+// KEYBOARD
+
+window.addEventListener("keydown",e=>{
+    const key=e.key.toLowerCase();
+    if(finalMode) {
+        if(/^[0-9]$/.test(key) || key==="r") {
+            e.preventDefault();
+            return;
+        }
+    }
+    const target=e.target;
+    const typing=target instanceof Element&&(target.matches("input,textarea,select")||target.isContentEditable);
+    const characterScreenOpen=getComputedStyle(document.getElementById("characterScreen")).display!=="none";
+    const makerScreenOpen=getComputedStyle(document.getElementById("makerScreen")).display!=="none";
+
+    if(!typing && !characterScreenOpen && !makerScreenOpen && key.length===1 && /^[a-z]$/.test(key)) {
+        secretBuffer = (secretBuffer + key).slice(-5);
+        if(secretBuffer === "lunar") {
+            unlockLunaBroom();
+            secretBuffer = "";
+        }
+    }
+
+    if(key==="r"&&!e.repeat&&!typing&&!characterScreenOpen&&!makerScreenOpen) {
+        e.preventDefault();
+        newRoom();
+        return;
+    }
+
+    if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(key)) {
+        e.preventDefault();
+    }
+
+    if(/^[0-9]$/.test(key)&&!e.repeat&&!typing&&!endingQueued&&!finalMode) {
+        selectBroom(key==="0"?9:Number(key)-1);
+    }
+
+    if(key==="v"&&!e.repeat&&!typing&&!endingQueued&&!finalMode) {
+        const vacuumIndex=brooms.findIndex(b=>b.vacuum);
+        if(vacuumIndex>=0) selectBroom(vacuumIndex);
+    }
+
+    keys[key]=true;
+});
+
+window.addEventListener("keyup",e=>{
+    keys[e.key.toLowerCase()]=false;
+});
+
+window.addEventListener("blur",()=>{
+    Object.keys(keys).forEach(k=>keys[k]=false);
+    pointerTarget=null;
+    pointerDown=false;
+});
+
+// CREW SELECT AND SUIT WORKSHOP
+
+function renderCharacterChoices() {
+    const grid=document.getElementById("characterGrid");
+    grid.replaceChildren();
+
+    const choices=CHARACTER_ASSETS.map(asset=>({
+        name:asset.name,
+        src:RAW_ASSET_BASE+asset.file,
+        custom:false
+    }));
+
+    choices.push({
+        name:"Custom Character",
+        src:customCharacterData,
+        custom:true
+    });
+
+    choices.forEach(choice=>{
+        const card=document.createElement("button");
+        card.type="button";
+        card.className="character-card"+(selectedCharacter===choice.name?" selected":"");
+
+        if(choice.src) {
+            const img=document.createElement("img");
+            img.src=choice.src;
+            img.alt=choice.name;
+            img.onerror=()=>{
+                const placeholder=document.createElement("div");
+                placeholder.className="character-placeholder";
+                placeholder.textContent="Image missing";
+                img.replaceWith(placeholder);
+                console.error("Character thumbnail failed to load:",choice.src);
+            };
+            card.appendChild(img);
+        } else {
+            const placeholder=document.createElement("div");
+            placeholder.className="character-placeholder";
+            placeholder.textContent="＋";
+            card.appendChild(placeholder);
+        }
+
+        const title=document.createElement("strong");
+        title.textContent=choice.name;
+
+        const note=document.createElement("small");
+        note.textContent=choice.custom
+            ?(customCharacterData?"Your saved creation":"Build your own")
+            :"Preset character";
+
+        card.append(title,note);
+
+        card.addEventListener("click",()=>{
+            if(choice.custom&&!customCharacterData) {
+                openCharacterMaker();
+                return;
+            }
+            selectedCharacter=choice.name;
+            try { localStorage.setItem(SELECTED_CHARACTER_KEY,selectedCharacter); } catch(error) {}
+            renderCharacterChoices();
+        });
+
+        grid.appendChild(card);
+    });
+
+}
+
+function startWithSelectedCharacter() {
+    const cleanName=playerNameInput.value.trim().replace(/[<>]/g,"").slice(0,18);
+
+    if(!cleanName) {
+        alert("Please enter your name before stepping onto the surface.");
+        playerNameInput.focus();
+        return;
+    }
+
+    playerNameInput.value=cleanName;
+
+    try {
+        localStorage.setItem(PLAYER_NAME_KEY,cleanName);
+    } catch(error) {}
+
+    if(selectedCharacter==="Custom Character"&&customCharacterData) {
+        setCharacterImage(customCharacterData);
+    } else {
+        const preset=CHARACTER_ASSETS.find(c=>c.name===selectedCharacter)||CHARACTER_ASSETS[0];
+        selectedCharacter=preset.name;
+        setCharacterImage(RAW_ASSET_BASE+preset.file);
+    }
+
+    try { localStorage.setItem(SELECTED_CHARACTER_KEY,selectedCharacter); } catch(error) {}
+
+    document.getElementById("characterScreen").style.display="none";
+    newRoom();
+}
+
+function openCharacterMaker() {
+    document.getElementById("characterScreen").style.display="none";
+    document.getElementById("makerScreen").style.display="flex";
+}
+
+function closeCharacterMaker() {
+    document.getElementById("makerScreen").style.display="none";
+    document.getElementById("characterScreen").style.display="flex";
+    renderCharacterChoices();
+}
+
+// SUIT WORKSHOP
+
+const makerCanvas=document.getElementById("makerCanvas");
+const makerCtx=makerCanvas.getContext("2d");
+let makerTool="brush";
+let makerDrawing=false;
+let makerBackground="#ffffff";
+let makerHistory=[];
+
+function makerFillBackground() {
+    makerCtx.clearRect(0,0,makerCanvas.width,makerCanvas.height);
+    if(makerBackground) {
+        makerCtx.fillStyle=makerBackground;
+        makerCtx.fillRect(0,0,makerCanvas.width,makerCanvas.height);
+    }
+}
+
+function makerSaveUndo() {
+    try {
+        makerHistory.push(makerCanvas.toDataURL("image/png"));
+        if(makerHistory.length>30) makerHistory.shift();
+    } catch(error) {
+        console.warn("Undo snapshot failed",error);
+    }
+}
+
+function makerRestore(data) {
+    const img=new Image();
+    img.onload=()=>{
+        makerFillBackground();
+        makerCtx.drawImage(img,0,0,makerCanvas.width,makerCanvas.height);
+    };
+    img.src=data;
+}
+
+function makerCoordinates(event) {
+    const rect=makerCanvas.getBoundingClientRect();
+    return {
+        x:(event.clientX-rect.left)*makerCanvas.width/rect.width,
+        y:(event.clientY-rect.top)*makerCanvas.height/rect.height
+    };
+}
+
+makerCanvas.addEventListener("pointerdown",event=>{
+    makerDrawing=true;
+    makerCanvas.setPointerCapture(event.pointerId);
+    makerSaveUndo();
+
+    const point=makerCoordinates(event);
+    makerCtx.beginPath();
+    makerCtx.moveTo(point.x,point.y);
+    makerCtx.lineCap="round";
+    makerCtx.lineJoin="round";
+    makerCtx.lineWidth=Number(document.getElementById("brushSize").value);
+    makerCtx.strokeStyle=document.getElementById("brushColor").value;
+    makerCtx.globalCompositeOperation=makerTool==="eraser"?"destination-out":"source-over";
+    makerCtx.lineTo(point.x+.01,point.y+.01);
+    makerCtx.stroke();
+});
+
+makerCanvas.addEventListener("pointermove",event=>{
+    if(!makerDrawing) return;
+    const point=makerCoordinates(event);
+    makerCtx.lineTo(point.x,point.y);
+    makerCtx.stroke();
+});
+
+function makerStopDrawing() {
+    makerDrawing=false;
+    makerCtx.closePath();
+    makerCtx.globalCompositeOperation="source-over";
+}
+
+makerCanvas.addEventListener("pointerup",makerStopDrawing);
+makerCanvas.addEventListener("pointercancel",makerStopDrawing);
+
+document.getElementById("brushSize").addEventListener("input",event=>{
+    document.getElementById("brushSizeValue").textContent=event.target.value;
+});
+
+document.getElementById("brushTool").addEventListener("click",()=>makerTool="brush");
+document.getElementById("eraserTool").addEventListener("click",()=>makerTool="eraser");
+
+document.getElementById("undoTool").addEventListener("click",()=>{
+    const previous=makerHistory.pop();
+    if(previous) makerRestore(previous);
+});
+
+document.getElementById("clearTool").addEventListener("click",()=>{
+    makerSaveUndo();
+    makerFillBackground();
+});
+
+document.getElementById("whiteBackground").addEventListener("click",()=>{
+    makerBackground="#ffffff";
+    makerFillBackground();
+});
+
+document.getElementById("transparentBackground").addEventListener("click",()=>{
+    makerBackground="";
+    makerFillBackground();
+});
+
+document.getElementById("characterUpload").addEventListener("change",event=>{
+    const file=event.target.files&&event.target.files[0];
+    if(!file) return;
+
+    if(!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+        document.getElementById("makerMessage").textContent="Choose a PNG, JPG, or WebP image.";
+        return;
+    }
+
+    const reader=new FileReader();
+
+    reader.onload=()=>{
+        const img=new Image();
+
+        img.onload=()=>{
+            makerSaveUndo();
+            makerFillBackground();
+
+            const scale=Math.min(makerCanvas.width/img.width,makerCanvas.height/img.height);
+            const width=img.width*scale;
+            const height=img.height*scale;
+
+            makerCtx.drawImage(
+                img,
+                (makerCanvas.width-width)/2,
+                (makerCanvas.height-height)/2,
+                width,
+                height
+            );
+
+            document.getElementById("makerMessage").textContent="Image loaded. Draw on top if you like.";
+        };
+
+        img.onerror=()=>{
+            document.getElementById("makerMessage").textContent="That image could not be opened.";
+        };
+
+        img.src=reader.result;
+    };
+
+    reader.readAsDataURL(file);
+});
+
+function saveCustomCharacter() {
+    try {
+        customCharacterData=makerCanvas.toDataURL("image/png");
+        localStorage.setItem(CUSTOM_CHARACTER_KEY,customCharacterData);
+        selectedCharacter="Custom Character";
+        localStorage.setItem(SELECTED_CHARACTER_KEY,selectedCharacter);
+        document.getElementById("makerMessage").textContent="Saved! Your custom astronaut is ready.";
+        closeCharacterMaker();
+    } catch(error) {
+        document.getElementById("makerMessage").textContent="Could not save. Try a smaller image or clear some browser storage.";
+    }
+}
+
+// LOAD SAVED SETTINGS
+
+try {
+    customCharacterData=localStorage.getItem(CUSTOM_CHARACTER_KEY);
+    const savedCharacter=localStorage.getItem(SELECTED_CHARACTER_KEY);
+    if(savedCharacter==="Custom Character") selectedCharacter="Custom Character";
+    else if(CHARACTER_ASSETS.some(c=>c.name===savedCharacter)) selectedCharacter=savedCharacter;
+} catch(error) {}
+
+makerFillBackground();
+renderCharacterChoices();
+
+// START
+
+applySeed(randomSeed());
+document.getElementById("seedInput").addEventListener("input",()=>{seedDirty=true;});
+
+buildSurface();
+buildBrooms();
+renderLeaderboard();
+document.getElementById("leaderboardStatus").textContent="Scores are saved on this device.";
+
+if(returningFromEnding) {
+    finalMode=true;
+    endingQueued=true;
+    selectedBroom=0;
+    player.speed=brooms[0].speed;
+    if(selectedCharacter==="Custom Character"&&customCharacterData) {
+        setCharacterImage(customCharacterData);
+    } else {
+        const preset=CHARACTER_ASSETS.find(c=>c.name===selectedCharacter)||CHARACTER_ASSETS[0];
+        selectedCharacter=preset.name;
+        setCharacterImage(RAW_ASSET_BASE+preset.file);
+    }
+    document.getElementById("characterScreen").style.display="none";
+    document.getElementById("makerScreen").style.display="none";
+    newRoom();
+    document.body.classList.add("lunar-final");
+    startMoonMan();
+    const returningMessage=document.getElementById("lunarReloadMessage");
+    returningMessage.classList.add("active");
+    setTimeout(()=>returningMessage.classList.remove("active"),2200);
+} else {
+    document.getElementById("characterScreen").style.display="flex";
+}
+gameLoop();
+</script>
+
+</body>
+</html>
