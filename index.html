@@ -311,19 +311,23 @@ body.lunar-final #game{
         <div class="leaderboard-header">
             <div>
                 <div class="section-title" style="margin:0">SPEEDRUN LEADERBOARD</div>
-                <small>FASTEST SURFACE CLEANS</small>
+                <small>FASTEST SURFACE CLEANS - ALL PLAYERS</small>
             </div>
             <div class="leaderboard-controls">
-                <button class="secondary" onclick="clearLeaderboard()">Reset</button>
+                <button class="secondary" onclick="refreshLeaderboard()">Refresh</button>
             </div>
         </div>
 
         <div class="leaderboard" id="leaderboard">
             <div class="empty">Loading mission records...</div>
         </div>
-        <small id="leaderboardStatus" style="display:block;color:#8b949e;font-size:11px;margin-top:8px">Loading locally saved runs...</small>
+        <small id="leaderboardStatus" style="display:block;color:#8b949e;font-size:11px;margin-top:8px">Connecting to the global board...</small>
     </div>
 </div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
 <script>
 const canvas = document.getElementById("game");
@@ -336,6 +340,23 @@ const SELECTED_CHARACTER_KEY = "broom_moon_selected_character_v1";
 const PLAYER_NAME_KEY = "broom_moon_player_name_v1";
 const ESCAPE_KEY = "broom_moon_escape_v1";
 const STORAGE_KEY = "broom_moon_speedruns_v1";
+
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyD3lb1hWMrneAGcDzocD53OGng8rOQGNNs",
+    authDomain: "btm-global.firebaseapp.com",
+    projectId: "btm-global",
+    storageBucket: "btm-global.firebasestorage.app",
+    messagingSenderId: "866311972021",
+    appId: "1:866311972021:web:93532081a7e02239ffcafc"
+};
+
+const RUNS_COLLECTION = "runs";
+const BOARD_SIZE = 10;
+
+let fbDb = null;
+let fbAuth = null;
+let leaderboardOnline = false;
+let leaderboardBusy = false;
 
 const CHARACTER_ASSETS = [
     {name:"Mrs Monduy",file:"MONDUY.jpg"},
@@ -1668,19 +1689,118 @@ function saveLeaderboard(entries) {
     }
 }
 
+function setBoardStatus(text) {
+    document.getElementById("leaderboardStatus").textContent=text;
+}
+
+// Firestore retries silently when the database is missing or blocked, which
+// would otherwise leave the board stuck on "Connecting..." forever.
+function withTimeout(promise,ms) {
+    return Promise.race([
+        promise,
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("timeout")),ms))
+    ]);
+}
+
+async function initLeaderboard() {
+    try {
+        if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+
+        fbAuth=firebase.auth();
+        fbDb=firebase.firestore();
+
+        await fbAuth.signInAnonymously();
+
+        leaderboardOnline=true;
+        await refreshLeaderboard();
+    } catch (error) {
+        leaderboardOnline=false;
+        console.warn("Global leaderboard unavailable:",error&&error.message);
+        renderLeaderboard();
+        setBoardStatus("Offline - showing the runs saved on this device.");
+    }
+}
+
+async function refreshLeaderboard() {
+    if(!leaderboardOnline||!fbDb) {
+        renderLeaderboard();
+        return;
+    }
+
+    if(leaderboardBusy) return;
+    leaderboardBusy=true;
+
+    try {
+        const snapshot=await withTimeout(
+            fbDb.collection(RUNS_COLLECTION).orderBy("time","asc").limit(BOARD_SIZE).get(),
+            10000
+        );
+
+        const entries=snapshot.docs.map(doc=>{
+            const data=doc.data()||{};
+            return {name:String(data.name||"MONDUY"),time:Number(data.time)||0};
+        });
+
+        renderLeaderboard(entries);
+        setBoardStatus(entries.length
+            ? "Global board - fastest "+entries.length+" runs across every player."
+            : "The global board is empty. Set the first record!");
+    } catch (error) {
+        console.warn("Could not read the global leaderboard:",error&&error.message);
+        renderLeaderboard();
+        setBoardStatus("Global board unreachable - showing runs saved on this device.");
+    } finally {
+        leaderboardBusy=false;
+    }
+}
+
 function recordScore(ms) {
     const name=document.getElementById("playerName").value.trim().replace(/[<>]/g,"").slice(0,18)||"MONDUY";
+    const run={
+        name,
+        time:Math.round(ms),
+        seed:currentSeed,
+        character:currentCharacter().name,
+        date:new Date().toISOString()
+    };
+
     const entries=getLeaderboard();
 
-    entries.push({
-        name,
-        time:ms,
-        date:new Date().toISOString()
-    });
+    entries.push(run);
 
     entries.sort((a,b)=>a.time-b.time);
-    saveLeaderboard(entries.slice(0,10));
+    saveLeaderboard(entries.slice(0,BOARD_SIZE));
     renderLeaderboard();
+
+    submitRun(run);
+}
+
+async function submitRun(run) {
+    if(!leaderboardOnline||!fbDb||!fbAuth||!fbAuth.currentUser) {
+        setBoardStatus("Run saved on this device. The global board is unreachable.");
+        return;
+    }
+
+    setBoardStatus("Submitting run to the global board...");
+
+    try {
+        await withTimeout(
+            fbDb.collection(RUNS_COLLECTION).add({
+                name:run.name,
+                time:run.time,
+                seed:run.seed,
+                character:run.character,
+                uid:fbAuth.currentUser.uid,
+                createdAt:firebase.firestore.FieldValue.serverTimestamp()
+            }),
+            10000
+        );
+
+        await refreshLeaderboard();
+    } catch (error) {
+        console.warn("Could not submit the run:",error&&error.message);
+        setBoardStatus("Run saved on this device. Global submit failed: "+((error&&error.code)||"error")+".");
+    }
 }
 
 function renderLeaderboard(entriesOverride) {
@@ -1714,14 +1834,6 @@ function renderLeaderboard(entriesOverride) {
         row.append(left,time);
         board.appendChild(row);
     });
-}
-
-function clearLeaderboard() {
-    if(!confirm("Delete all locally saved mission records?")) return;
-    try {
-        localStorage.removeItem(STORAGE_KEY);
-    } catch {}
-    renderLeaderboard();
 }
 
 // VICTORY
@@ -2488,8 +2600,7 @@ document.getElementById("seedInput").addEventListener("input",()=>{seedDirty=tru
 
 buildSurface();
 buildBrooms();
-renderLeaderboard();
-document.getElementById("leaderboardStatus").textContent="Scores are saved on this device.";
+initLeaderboard();
 
 if(returningFromEnding) {
     finalMode=true;
